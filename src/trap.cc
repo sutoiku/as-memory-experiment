@@ -5,7 +5,7 @@
 
 #include "trap.hh"
 
-const char *get_sig(int sig) {
+static const char *get_sig(int sig) {
   switch(sig) {
     case SIGSEGV: return "SIGSEGV";
     case SIGBUS: return "SIGBUS";
@@ -16,6 +16,7 @@ const char *get_sig(int sig) {
 static void signal_handler(int sig, siginfo_t *info, void *ucontext) {
 
   if(v8::V8::TryHandleSignal(sig, info, ucontext)) { // TryHandleWebAssemblyTrapPosix
+    std::cout << "TryHandleSignal success" << std::endl;
     return;
   }
 

@@ -32,10 +32,9 @@ async function main() {
     maximum: 100,
   });*/
 
-  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Memory/Memory
-  // Note: A WebAssembly page has a constant size of 65,536 bytes, i.e., 64KiB.
-  const bufferSize = 65536 * 10;
-  const memory = wamem.createMemory(bufferSize);
+  const memory = wamem.createMemory();
+  const bufferSize = memory.buffer.byteLength;
+  console.log("bufferSize", bufferSize);
 
   console.time("instantiate");
   const module = await loader.instantiate(binary, { env: { memory } });
@@ -45,5 +44,5 @@ async function main() {
   testWrite(10, 42);
   console.log(testRead(10));
 
-  testWrite(65536 * 10 + 10, 66);
+  testWrite(bufferSize + 1, 66);
 }

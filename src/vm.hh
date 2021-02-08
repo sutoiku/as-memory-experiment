@@ -10,5 +10,5 @@ namespace experiment {
     virtual std::size_t size() const = 0;
   };
 
-  std::shared_ptr<memory> create_vm(std::size_t size);
+  std::shared_ptr<memory> create_vm();
 }
