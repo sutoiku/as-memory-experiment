@@ -19,7 +19,7 @@ namespace experiment {
   }
 
   void setupTrap(const v8::FunctionCallbackInfo<v8::Value>& args) {
-    experiment::setup_trap();
+    setup_trap();
   }
 
   void printArrayBufferBackingStoreFlags(const v8::FunctionCallbackInfo<v8::Value>& args) {

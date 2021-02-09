@@ -15,12 +15,23 @@ static const char *get_sig(int sig) {
 
 static void signal_handler(int sig, siginfo_t *info, void *ucontext) {
 
-  if(v8::V8::TryHandleSignal(sig, info, ucontext)) { // TryHandleWebAssemblyTrapPosix
-    std::cout << "TryHandleSignal success" << std::endl;
-    return;
+  // on OSX v8 handle SIGBUS only
+  if(sig == SIGBUS || sig == SIGSEGV) {
+
+    ucontext_t* uc = reinterpret_cast<ucontext_t*>(ucontext);
+    auto* context_rip = &uc->uc_mcontext->__ss.__rip; // OSX only, cf v8 code for linux
+    uintptr_t fault_addr = *context_rip;
+    std::cout << get_sig(sig) << " " << info->si_addr << " from instruction at " << reinterpret_cast<void *>(fault_addr) << std::endl;
+
+    // on OSX v8 handle SIGBUS only
+    if (v8::V8::TryHandleSignal(SIGBUS, info, ucontext)) { // TryHandleWebAssemblyTrapPosix
+      std::cout << "TryHandleSignal success" << std::endl;
+      return;
+    }
   }
 
-  std::cout << get_sig(sig) << " " << info->si_addr << std::endl;
+  std::cout << get_sig(sig) << " UNCAUGHT" << std::endl;
+
 
   // re-throw
   signal(sig, SIG_DFL);
