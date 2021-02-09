@@ -122,14 +122,12 @@ namespace v8 {
 
 namespace {
 
-  template<typename T>
   struct shared_ptr_holder {
-    std::shared_ptr<T> ptr;
+    std::shared_ptr<experiment::memory> ptr;
   };
 
-  template<typename T>
   static void backing_store_deleter(void* buffer, size_t length, void* info) {
-    shared_ptr_holder<T> *holder = reinterpret_cast<shared_ptr_holder<T> *>(info);
+    shared_ptr_holder *holder = reinterpret_cast<shared_ptr_holder *>(info);
     delete holder;
   }
 
@@ -138,17 +136,21 @@ namespace {
 namespace experiment {
 
   v8::Local<v8::Object> create_v8_wa_memory(v8::Isolate* isolate, std::shared_ptr<memory> native_memory) {
-    auto holder = new shared_ptr_holder<memory>();
+    auto holder = new shared_ptr_holder();
     holder->ptr = native_memory;
+    // void *callback = &(backing_store_deleter);
 
     auto backing_store = v8::ArrayBuffer::NewBackingStore(
         native_memory->data(), native_memory->size(),
-        backing_store_deleter<memory>, holder);
+        &(backing_store_deleter), holder);
+
+    std::cout << "create_v8_wa_memory: callback=" << &(backing_store_deleter) << ", holder=" << holder << std::endl;
     
     // TODO: if it fails, we MUST delete holder
 
     auto internal_store = reinterpret_cast<v8_structure_mapping::BackingStore *>(backing_store.get());
-    internal_store->has_guard_regions_ = true; // TODO: this is NOT true, for now, we MUST implement guard regions
+    internal_store->has_guard_regions_ = true;
+    internal_store->is_wasm_memory_ = true;
 
     auto buffer = v8::ArrayBuffer::New(isolate, std::move(backing_store));
 
@@ -157,6 +159,30 @@ namespace experiment {
     auto internal_isolate = reinterpret_cast<v8::internal::Isolate *>(isolate);
     auto new_memory = v8::internal::WasmMemoryObject::New(internal_isolate, handle, 10);
     return v8_internal_utils::ToLocal<v8::Object>(new_memory);
+  }
+
+  void print_array_buffer_backing_store_flags(v8::Local<v8::ArrayBuffer> buffer) {
+    auto backing_store = buffer->GetBackingStore();
+    auto internal_store = reinterpret_cast<v8_structure_mapping::BackingStore *>(backing_store.get());
+
+    std::cout << "buffer_start " << internal_store->buffer_start_ << std::endl;
+    std::cout << "byte_length " << internal_store->byte_length_ << std::endl;
+    std::cout << "byte_capacity " << internal_store->byte_capacity_ << std::endl;
+
+    std::cout << "type_specific_data.v8_api_array_buffer_allocator " << internal_store->type_specific_data_.v8_api_array_buffer_allocator << std::endl;
+    std::cout << "type_specific_data.v8_api_array_buffer_allocator_shared " << internal_store->type_specific_data_.v8_api_array_buffer_allocator_shared << std::endl;
+    std::cout << "type_specific_data.shared_wasm_memory_data " << internal_store->type_specific_data_.shared_wasm_memory_data << std::endl;
+    std::cout << "type_specific_data.deleter.callback " << internal_store->type_specific_data_.deleter.callback << std::endl;
+    std::cout << "type_specific_data.deleter.data " << internal_store->type_specific_data_.deleter.data << std::endl;
+
+    std::cout << "is_shared " << internal_store->is_shared_ << std::endl;
+    std::cout << "is_wasm_memory " << internal_store->is_wasm_memory_ << std::endl;
+    std::cout << "holds_shared_ptr_to_allocator " << internal_store->holds_shared_ptr_to_allocator_ << std::endl;
+    std::cout << "free_on_destruct " << internal_store->free_on_destruct_ << std::endl;
+    std::cout << "has_guard_regions " << internal_store->has_guard_regions_ << std::endl;
+    std::cout << "globally_registered " << internal_store->globally_registered_ << std::endl;
+    std::cout << "custom_deleter " << internal_store->custom_deleter_ << std::endl;
+    std::cout << "empty_deleter " << internal_store->empty_deleter_ << std::endl;
   }
 
 }
