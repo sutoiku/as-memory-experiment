@@ -11,4 +11,7 @@ namespace experiment {
   };
 
   std::shared_ptr<memory> create_vm();
+  std::shared_ptr<memory> create_cow();
+
+  bool handle_cow(uintptr_t fault_data_address);
 }

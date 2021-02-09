@@ -4,6 +4,7 @@
 #include <signal.h>
 
 #include "trap.hh"
+#include "vm.hh"
 
 static const char *get_sig(int sig) {
   switch(sig) {
@@ -22,6 +23,11 @@ static void signal_handler(int sig, siginfo_t *info, void *ucontext) {
     auto* context_rip = &uc->uc_mcontext->__ss.__rip; // OSX only, cf v8 code for linux
     uintptr_t fault_addr = *context_rip;
     std::cout << get_sig(sig) << " " << info->si_addr << " from instruction at " << reinterpret_cast<void *>(fault_addr) << std::endl;
+
+    if(experiment::handle_cow(reinterpret_cast<uintptr_t>(info->si_addr))) {
+      // TODO: do we need something to retry?
+      return;
+    }
 
     // on OSX v8 handle SIGBUS only
     if (v8::V8::TryHandleSignal(SIGBUS, info, ucontext)) { // TryHandleWebAssemblyTrapPosix

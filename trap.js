@@ -16,13 +16,13 @@ async function main() {
   wamem.setupTrap();
 
   console.time("compileString");
-  const script = fs.readFileSync(path.join(__dirname, "tests.as"), "utf-8");
+  const script = fs.readFileSync(path.join(__dirname, "trap.as"), "utf-8");
 
   const { binary } = asc.compileString(script, {
     optimize: 2,
     exportRuntime: true,
     importMemory: true,
-    memoryBase: 4096,
+    memoryBase: 4096, // at COMPILE time
   });
 
   console.timeEnd("compileString");
