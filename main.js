@@ -27,14 +27,24 @@ async function main() {
 
   console.timeEnd("compileString");
 
-  /*const memory = new WebAssembly.Memory({
+  const stdMem = new WebAssembly.Memory({
     initial: 100,
     maximum: 100,
-  });*/
+  });
 
-  const memory = wamem.createMemory();
+  const customMem = wamem.createMemory();
+
+  await runFromMemory(binary, stdMem);
+  await runFromMemory(binary, customMem);
+}
+
+async function runFromMemory(binary, memory) {
+  console.log("----------------------------");
+
   const bufferSize = memory.buffer.byteLength;
   console.log("bufferSize", bufferSize);
+
+  wamem.printArrayBufferBackingStoreFlags(memory.buffer);
 
   console.time("instantiate");
   const module = await loader.instantiate(binary, { env: { memory } });
@@ -44,5 +54,11 @@ async function main() {
   testWrite(10, 42);
   console.log(testRead(10));
 
-  testWrite(bufferSize + 1, 66);
+  try {
+    testWrite(bufferSize + 1, 66);
+  } catch (err) {
+    console.error("CAUGHT", err);
+  }
+
+  console.log("----------------------------");
 }
