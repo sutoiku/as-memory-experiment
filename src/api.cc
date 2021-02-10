@@ -64,6 +64,8 @@ namespace experiment {
 
   void init(v8::Local<v8::Object> exports) {
     NODE_SET_METHOD(exports, "createMemory", createMemory);
+    NODE_SET_METHOD(exports, "vmMapFile", vmMapFile);
+    NODE_SET_METHOD(exports, "vmUnmapFile", vmUnmapFile);
     NODE_SET_METHOD(exports, "createCowMemory", createCowMemory);
     NODE_SET_METHOD(exports, "setupTrap", setupTrap);
     NODE_SET_METHOD(exports, "printArrayBufferBackingStoreFlags", printArrayBufferBackingStoreFlags);
