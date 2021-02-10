@@ -18,6 +18,28 @@ namespace experiment {
     args.GetReturnValue().Set(wamem);
   }
 
+  void vmMapFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::Isolate* isolate = args.GetIsolate();
+    auto context = isolate->GetCurrentContext();
+
+    auto path = std::string(*::v8::String::Utf8Value(isolate, args[0]->ToString(context).ToLocalChecked()));
+    auto offset = args[1]->Uint32Value(context).ToChecked();
+    auto size = args[2]->Uint32Value(context).ToChecked();
+    auto writable = args[3]->BooleanValue(isolate);
+
+    auto id = vm_map_file(path, offset, size, writable);
+    args.GetReturnValue().Set(id);
+  }
+
+  void vmUnmapFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    v8::Isolate* isolate = args.GetIsolate();
+    auto context = isolate->GetCurrentContext();
+
+    auto id = args[0]->Int32Value(context).ToChecked();
+
+    vm_unmap_file(id);
+  }
+
   void createCowMemory(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
     // auto context = isolate->GetCurrentContext();

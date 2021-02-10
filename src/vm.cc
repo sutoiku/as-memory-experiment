@@ -3,6 +3,7 @@
 #include <v8.h>
 #include <sstream>
 #include <set>
+#include <map>
 
 #include "vm.hh"
 #include "ryu-os-calls.hh"
@@ -58,12 +59,12 @@ namespace experiment {
     return reinterpret_cast<void *>(ptr);
   }
 
-  static uintptr_t vm_allocate(uintptr_t address, std::size_t size, int prot) {
+  static uintptr_t vm_allocate(uintptr_t address, std::size_t size, int prot, int fd = -1) {
     auto flags = MAP_PRIVATE | MAP_ANONYMOUS;
     if(address != 0) {
       flags |= MAP_FIXED;
     }
-    return as_ptr(oscalls::mmap(as_ptr(address), size, prot, flags, -1, 0));
+    return as_ptr(oscalls::mmap(as_ptr(address), size, prot, flags, fd, 0));
   }
 
   static void vm_deallocate(uintptr_t address, std::size_t size) {
@@ -142,10 +143,44 @@ namespace experiment {
   // ---------------------------------------------------------------------------
   // REGION
   // ---------------------------------------------------------------------------
+
+  struct mapping {
+    mapping(int id, const std::string &path, uintptr_t address, size_t size, bool writable) {
+      int fd = oscalls::open(path.c_str(), writable ? O_RDWR : O_RDONLY);
+
+      int flags = PROT_READ;
+      if(writable) {
+        flags |= PROT_WRITE;
+      }
+
+      vm_allocate(address, size, flags, fd);
+
+      close(fd);
+    }
+
+    ~mapping() {
+      // erase the mapping with an inaccessible one
+      // TODO: this need care when called from region dtor (because vm_deallocate already called?)
+      vm_allocate(_address, _size, PROT_NONE);
+    }
+
+    bool is_overlap(uintptr_t address, size_t size) const {
+      // https://stackoverflow.com/questions/325933/determine-whether-two-date-ranges-overlap/325964#325964
+      auto starta = address;
+      auto enda = address + size;
+      auto startb = _address;
+      auto endb = _address + _size;
+      return starta <= endb && startb <= enda;
+    }
+
+  private:
+    uintptr_t _address;
+    size_t _size;
+  };
     
   struct region : public memory {
     region(size_t reservation_size)
-     : _reservation_size(reservation_size) {
+     : _reservation_size(reservation_size), _mapping_id_counter(0) {
       // TODO: test hugepages
       _base = vm_allocate(0, VM_RESERVATION_SIZE, PROT_NONE);
       _data = _base + VM_BASE_OFFSET;
@@ -169,20 +204,26 @@ namespace experiment {
       return VM_ALLOCATABLE_SIZE;
     }
 
-    void map_file(const std::string &path, uintptr_t offset, size_t size) {
+    int map_file(const std::string &path, uintptr_t offset, size_t size, bool writable) {
+      auto address = absolute(offset);
+      for(const auto & [id, mapping]: _mappings) {
+        if(mapping->is_overlap(address, size)) {
+          std::cout << "map_file overlap id " << id << std::endl;
+          abort();
+        }
+      }
 
+      auto id = ++_mapping_id_counter;
+      _mappings.emplace(id, std::make_unique<mapping>(id, path, address, size, writable));
+      return id;
     }
 
-    void unmap_file() {
-
-    }
-
-    void map_heap(uintptr_t offset, size_t size) {
-
+    void unmap_file(int id) {
+      _mappings.erase(id);
     }
 
   private:
-    size_t heap_base() const {
+    uintptr_t heap_base() const {
       return _data + _reservation_size;
     }
 
@@ -190,7 +231,7 @@ namespace experiment {
       return VM_ALLOCATABLE_SIZE - _reservation_size;
     }
 
-    size_t mappable_base() const {
+    uintptr_t mappable_base() const {
       return _data;
     }
 
@@ -198,14 +239,30 @@ namespace experiment {
       return _reservation_size;
     }
 
+    uintptr_t absolute(uintptr_t offset) {
+      return _data + offset;
+    }
+
     uintptr_t _base;
     uintptr_t _data;
     size_t _reservation_size;
+    int _mapping_id_counter;
+    std::map<int, std::unique_ptr<mapping>> _mappings;
   };
 
+  // for now store it globally here as a crado
+  static std::shared_ptr<region> global_region;
+
   std::shared_ptr<memory> create_vm(size_t reservation_size) {
-    return std::make_shared<region>(reservation_size);
+    global_region = std::make_shared<region>(reservation_size);
+    return global_region;
   }
 
+  int vm_map_file(const std::string &path, uintptr_t offset, size_t size, bool writable) {
+    return global_region->map_file(path, offset, size, writable);
+  }
 
+  void vm_unmap_file(int id) {
+    return global_region->unmap_file(id);
+  }
 }
