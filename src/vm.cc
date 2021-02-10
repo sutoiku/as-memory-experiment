@@ -60,10 +60,17 @@ namespace experiment {
   }
 
   static uintptr_t vm_allocate(uintptr_t address, std::size_t size, int prot, int fd = -1) {
-    auto flags = MAP_PRIVATE | MAP_ANONYMOUS;
-    if(address != 0) {
+    auto flags = 0;
+    if (fd != -1) {
+      flags |= MAP_SHARED;
+    } else {
+      flags |= MAP_PRIVATE | MAP_ANONYMOUS;
+    }
+
+    if (address != 0) {
       flags |= MAP_FIXED;
     }
+
     return as_ptr(oscalls::mmap(as_ptr(address), size, prot, flags, fd, 0));
   }
 
@@ -145,7 +152,9 @@ namespace experiment {
   // ---------------------------------------------------------------------------
 
   struct mapping {
-    mapping(int id, const std::string &path, uintptr_t address, size_t size, bool writable) {
+    mapping(int id, const std::string &path, uintptr_t address, size_t size, bool writable)
+     : _address(address)
+     , _size(size) {
       int fd = oscalls::open(path.c_str(), writable ? O_RDWR : O_RDONLY);
 
       int flags = PROT_READ;
@@ -153,7 +162,7 @@ namespace experiment {
         flags |= PROT_WRITE;
       }
 
-      vm_allocate(address, size, flags, fd);
+      vm_allocate(_address, _size, flags, fd);
 
       close(fd);
     }
@@ -161,6 +170,7 @@ namespace experiment {
     ~mapping() {
       // erase the mapping with an inaccessible one
       // TODO: this need care when called from region dtor (because vm_deallocate already called?)
+      // vm_deallocate(_address, _size);
       vm_allocate(_address, _size, PROT_NONE);
     }
 

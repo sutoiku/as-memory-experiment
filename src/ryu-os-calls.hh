@@ -21,7 +21,7 @@ namespace oscalls {
     }
     
     std::ostringstream oss;
-    oss << errno << " " << name << "os call error";
+    oss << errno << " " << name << " os call error";
     throw std::runtime_error(oss.str());
   }
 

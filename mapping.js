@@ -43,7 +43,7 @@ async function main() {
   {
     const content = Buffer.from([0x10, 0x20, 0x30, 0x40, 0x50, 0x60]);
     fs.writeFileSync(FILE, content);
-    const id = wamem.vmMapFile(FILE, 0x1000, content.length, false);
+    const id = wamem.vmMapFile(FILE, 0x1000, 4096, false);
     console.log("should be 0x20", testRead(0x1001));
 
     try {
@@ -58,7 +58,7 @@ async function main() {
   {
     const content = Buffer.from([0, 0, 0, 0, 0, 0]);
     fs.writeFileSync(FILE, content);
-    const id = wamem.vmMapFile(FILE, 0x1000, content.length, true);
+    const id = wamem.vmMapFile(FILE, 0x1000, 4096, true);
     console.log("should be 0x0", testRead(0x1001));
 
     testWrite(0x1002, 42);
