@@ -19,14 +19,16 @@ async function main() {
   const script = fs.readFileSync(path.join(__dirname, "layout.as"), "utf-8");
   console.timeEnd("compileString");
 
+  const reservation = 512 * 1024 * 1024;
+
   const { binary } = asc.compileString(script, {
     optimize: 2,
     exportRuntime: true,
     importMemory: true,
-    memoryBase: 65536, // at COMPILE time
+    memoryBase: reservation, // at COMPILE time
   });
 
-  const memory = wamem.createCowMemory();
+  const memory = wamem.createMemory(reservation);
 
   const bufferSize = memory.buffer.byteLength;
   console.log("bufferSize", bufferSize);

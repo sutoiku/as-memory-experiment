@@ -9,11 +9,11 @@ namespace experiment {
 
   void createMemory(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Isolate* isolate = args.GetIsolate();
-    // auto context = isolate->GetCurrentContext();
+    auto context = isolate->GetCurrentContext();
 
-    // auto buffer_size = args[0]->Uint32Value(context).ToChecked();
+    auto reservation_size = args[0]->Uint32Value(context).ToChecked();
 
-    auto memory = create_vm();
+    auto memory = create_vm(reservation_size);
     auto wamem = create_v8_wa_memory(isolate, memory);
     args.GetReturnValue().Set(wamem);
   }
